@@ -80,23 +80,27 @@
 		var password = document.querySelector("#password").value;
 		// PBKDF2 salt, see this: https://stackoverflow.com/questions/17218089/salt-and-hash-using-pbkdf2#:~:text=Since%20PBKDF2%27s%20Standard%20recommends%20salts%20of%20at%20least,doubles%20computation%20time%20for%20each%20multiple%20of%2020.
 		var salt = new Uint8Array(16);
-		var divider = "%";
+		var divider = ".";
 			
 		window.crypto.getRandomValues(salt);
+		alert(salt);
 		window.crypto.subtle.importKey("raw", new TextEncoder().encode(password), {name: "PBKDF2"}, false, ["deriveBits", "deriveKey"])
 		.then(keyMaterial => window.crypto.subtle.deriveKey({ "name": "PBKDF2", salt: salt, "iterations": 650000, "hash": "SHA-256" }, keyMaterial, { "name": "AES-GCM", "length": 256}, true, [ "encrypt", "decrypt" ]))
 		.then(cryptoKey => window.crypto.subtle.encrypt(algoEncrypt, cryptoKey, strToArrayBuffer(plainText)))
 		.then(function(cipherText) { 
-			document.querySelector("#ciphertext").value = arrayBufferToBase64(cipherText);
+			document.querySelector("#ciphertext").value = arrayBufferToBase64(salt) + divider + arrayBufferToBase64(cipherText);
 		});
 	}
 
 	function decryptMessage() {
 		var cipherText = document.querySelector("#ciphertext").value;
 		var password = document.querySelector("#password").value;
-		
+		var divider = ".";
+		var salt = new Uint8Array(base64ToArrayBuffer(cipherText.substring(0,cipherText.indexOf(divider))));
+
+		cipherText = cipherText.substring(cipherText.indexOf(divider)+1);
 		window.crypto.subtle.importKey("raw", new TextEncoder().encode(password), {name: "PBKDF2"}, false, ["deriveBits", "deriveKey"])
-		.then(keyMaterial => window.crypto.subtle.deriveKey({ "name": "PBKDF2", salt: new TextEncoder().encode("a salt"), "iterations": 650000, "hash": "SHA-256" }, keyMaterial, { "name": "AES-GCM", "length": 256}, true, [ "encrypt", "decrypt" ]))
+		.then(keyMaterial => window.crypto.subtle.deriveKey({ "name": "PBKDF2", salt: salt, "iterations": 650000, "hash": "SHA-256" }, keyMaterial, { "name": "AES-GCM", "length": 256}, true, [ "encrypt", "decrypt" ]))
 		.then(cryptoKey => window.crypto.subtle.decrypt(algoEncrypt, cryptoKey, base64ToArrayBuffer(cipherText)))
 		.then(function(plainText) { 
 			document.querySelector("#decryptedtext").value = arrayBufferToString(plainText);
